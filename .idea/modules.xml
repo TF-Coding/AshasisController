@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/NodeJsControllerNew.iml" filepath="$PROJECT_DIR$/NodeJsControllerNew.iml" />
+      <module fileurl="file://$PROJECT_DIR$/AshasisController.iml" filepath="$PROJECT_DIR$/AshasisController.iml" />
     </modules>
   </component>
 </project>
