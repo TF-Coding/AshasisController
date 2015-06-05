@@ -1,0 +1,7 @@
+each url, title in {'Übersicht':'/','Item-Zuweisung':'/mapping'}
+    if url == currentUrl
+        li.active
+            a(href=url)= title
+    else
+        li
+            a(href=url)= title

@@ -1,0 +1,26 @@
+extends sitemap_layout
+block headers
+    script(type='text/javascript', src='javascripts/test.js')
+block content
+    h1= title
+    p Welcome to #{title}
+    form(action='/relay',id='testFrm')
+        input(type="text", id="inp")
+        input(type="button", id="btn")
+    div.table-responsive
+        table.table.table-striped
+            tr
+                th  C1
+                th  C2
+                th  C3
+                th  C4
+                th  C5
+            - var row = 1
+            while row < 5
+                tr
+                    td= 'D1- '+ row
+                    td= 'D2- '+ row
+                    td= 'D3- '+ row
+                    td= 'D4- '+ row
+                    td= 'D5- '+ row
+                - var row = row +1
