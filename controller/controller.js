@@ -1,20 +1,20 @@
 var e = {};
 e.appendedString = "";
-e.appendData = function(str) {
-    pos=0;
+e.appendData = function (str) {
+    pos = 0;
     while (str.charAt(pos) != '\n' && pos < str.length) {
-        e.appendedString=e.appendedString+str.charAt(pos);
+        e.appendedString = e.appendedString + str.charAt(pos);
         pos++;
     }
     if (str.charAt(pos) == '\n') {
-	console.log(e.appendedString);
-        e.gotData( e.decode( e.appendedString.trim() ) );
-        e.appendedString="";
+        console.log(e.appendedString);
+        e.gotData(e.decode(e.appendedString.trim()));
+        e.appendedString = "";
     }
     if (pos < str.length) {
-        e.appendData(str.substr(pos+1,str.length-pos-1));
+        e.appendData(str.substr(pos + 1, str.length - pos - 1));
     }
-}
+};
 e.connectSerialPort = function (cb) {
     var gwType = e.config.gateway.useType;
     if (gwType == undefined) {
@@ -37,7 +37,7 @@ e.connectSerialPort = function (cb) {
         e.gw.on('open', function () {
             console.log('SerialPort opened :: ' + gwConf.port + "@" + gwConf.baudrate);
         }).on('data', function (raw) {
-	    e.appendData(raw.toString());
+            e.appendData(raw.toString());
         }).on('end', function () {
             console.log('SerialPort disconnected :: trying reconnect');
             require('sleep').sleep(delay);
@@ -102,7 +102,7 @@ e.decode = function (msg) {
         rawpayload = datas[5].trim();
     }
     var payload;
-    if (command == e.constants.C_STREAM) {
+    if (command == 4) {
         payload = [];
         for (var i = 0; i < rawpayload.length; i += 2)
             payload.push(parseInt(rawpayload.substring(i, i + 2), 16));
@@ -139,29 +139,42 @@ e.start = function (callback) {
 
 e.handleInternal = function (decoded) {
     switch (decoded.type) {
-        case e.constants.I_BATTERY_LEVEL:
-        case e.constants.I_VERSION:
-        case e.constants.I_SKETCH_NAME:
-        case e.constants.I_SKETCH_VERSION:
-            e.database.updateNodeInfoInternal(decoded.sender, decoded.type, decoded.payload);
+        case 0: //batt
+            e.database.updateNodeInfoInternal(decoded.sender, "batteryLevel", decoded.payload);
             break;
-        case e.constants.I_TIME:
+        case 2: //version
+            e.database.updateNodeInfoInternal(decoded.sender,"apiVersion", decoded.payload);
             break;
-        case e.constants.I_ID_REQUEST:
+        case 11://sketch name
+            e.database.updateNodeInfoInternal(decoded.sender, "sketchName", decoded.payload);
             break;
-        case e.constants.I_LOG_MESSAGE:
+        case 12: //SKETCH_VERSION:
+            e.database.updateNodeInfoInternal(decoded.sender, "sketchVersion", decoded.payload);
             break;
-        case e.constants.I_CONFIG:
+        case 1: //time
+            console.log("got time request");
+            break;
+        case 3: //id req
+            console.log("got id request");
+            break;
+        case 9: //log
+        case 14: //gateway ready
+            //dont handle
+            break;
+        case 6:
             //I_CONFIG	6	Config request from node. Reply with (M)etric or (I)mperal back to sensor.
+            console.log("got config request");
             break;
         /*
-         case e.constants.I_ID_RESPONSE: break;
-         case e.constants.I_INCLUSION_MODE: break;
-         case e.constants.I_CONFIG: break;
-         case e.constants.I_CHILDREN: break;
+         case 4: //ID_RESPONSE:
+         break;
+         case 5: //inclusion mode
+         break;
+         case 10: //children
+         break;
          */
         default:
-            console.log("Got unhandles internal: " + decoded.type);
+            console.log("Got unhandled internal: " + decoded.type);
             return; //uninteresting cases
     }
 };
@@ -171,50 +184,54 @@ e.handlePresentation = function (decoded) {
         if (decoded.sensor == 255) {
             e.database.updateNodeInfoPresentation(decoded.sender, decoded.type, decoded.payload);
         } else {
-	    console.log(decoded);
+            console.log(decoded);
             e.database.updateChildInfo(decoded.sender, decoded.sensor, decoded.type);
         }
     }
 };
 
 e.handleSet = function (decoded) {
-        e.openhab.updateItem(decoded);
+    e.openhab.updateItem(decoded);
 };
 
 
 e.gotData = function (decoded) {
     switch (decoded.command) {
-        case e.constants.C_PRESENTATION: //0
+        case 0: //C_PRESENTATION
             //console.log("PRESENTATION" + " :: ", decoded);
             e.handlePresentation(decoded);
             break;
-        case e.constants.C_SET://1 - value FROM sensor
+        case 1://C_SET - value FROM sensor
             e.handleSet(decoded);
             break;
-        case e.constants.C_REQ: //2
+        case 2: //C_REQ - value TO sensor
             console.log("REQ" + " :: ", decoded);
             //not supported
             break;
-        case e.constants.C_INTERNAL: //3
+        case 3: //C_INTERNAL
             e.handleInternal(decoded);
             //console.log("INTERNAL" + " :: ",decoded);
             break;
-        case e.constants.C_STREAM:  //4
+        case 4:  //C_STREAM
             break;
     }
     //e.appendData(rd.toString(), db, e.gw);
 };
 
-
+e.getMappingData = function (cb) {
+    e.openhab.getItems(function (openhabitems) {
+        e.database.getAllMappings(function (mappings) {
+            cb(mappings, openhabitems);
+        });
+    });
+};
 e.config = null;
 e.firmware = null;
 e.openhab = null;
-e.constants = null;
 e.database = null;
 module.exports = function (config, database) {
     e.config = config;
     e.database = database;
-    e.constants = require('./constants.js');
     e.firmware = require('./firmware.js')(e);
     e.openhab = require('./openhab.js')(e);
     return e;

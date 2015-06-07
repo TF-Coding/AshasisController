@@ -2,14 +2,15 @@ var db = require("mysql");
 
 var e = {};
 e.config = require('../config');
-e.constants = require('./constants');
 
 e.conn = db.createConnection(e.config.database);
 
 e.connect = function (cb) {
     e.conn.connect(cb);
 };
-
+e.updateLastUpdate = function(nodeId, childId){
+    e.conn.query("UPDATE mapping SET lastupdate = NOW() WHERE id=(SELECT id FROM children WHERE nodeId = "+nodeId+" AND childId = "+childId+")");
+};
 e.updateChildInfo = function (nodeId, childId, type) {
     //check if existing
     e.conn.query("SELECT COUNT(*) as `exists` FROM children WHERE nodeId = " + nodeId + " AND childId = " + childId, function (err, rows, fields) {
@@ -29,30 +30,12 @@ e.updateChildInfo = function (nodeId, childId, type) {
     });
 };
 
-e.updateNodeInfoInternal = function (nodeId, type, value) {
+e.updateNodeInfoInternal = function (nodeId, updateCol, value) {
     //check if existing
     e.conn.query("SELECT COUNT(*) as `exists` FROM nodes WHERE nodeId = " + nodeId, function (err, rows, fields) {
         if (err) {
             console.log("DB-ERROR: " + err);
         } else {
-            var updateCol = "";
-            switch (type) {
-                case e.constants.I_SKETCH_NAME:
-                    updateCol = "sketchName";
-                    break;
-                case e.constants.I_BATTERY_LEVEL:
-                    updateCol = "batteryLevel";
-                    break;
-                case e.constants.I_VERSION:
-                    updateCol = "apiVersion";
-                case e.constants.I_SKETCH_VERSION:
-                    updateCol = "sketchVersion";
-                    break;
-                default:
-                    console.log("Unknown updateNodeInfo: N:" + nodeId + " T:" + type + " V:" + value);
-                    return;
-                    break;
-            }
             var qry = "UPDATE nodes SET `"+updateCol+"`='"+value+"' WHERE nodeId="+nodeId;
             if (rows[0].exists == 0) {
                 //create entry
@@ -73,12 +56,13 @@ e.updateNodeInfoPresentation = function (nodeId, type, value) {
             console.log("DB-ERROR: " + err);
         } else {
             switch (type) {
-                case e.constants.S_ARDUINO_NODE:
-                case e.constants.S_ARDUINO_REPEATER_NODE:
+                //Todo: handle other cases?
+                case 17: //S_ARDUINO_NODE
+                case 18: //S_ARDUINO_REPEATER_NODE
                     var qry = "UPDATE nodes SET apiVersion='" + value + "' WHERE nodeId = " + nodeId;
                     break;
                 default:
-                    console.log("Unknown updateNodeInfo: N:" + nodeId + " T:" + type + " V:" + value);
+                    console.log("Unknown updateNodePresentation: N:" + nodeId + " T:" + type + " V:" + value);
                     break;
             }
 
@@ -102,6 +86,35 @@ e.getOpenhabItemBinding = function(sender,sensor, cb){
         }
 	e.conn.query("UPDATE nodes SET lastContact=NOW() WHERE nodeId=" + sender);
         cb(row[0].itm);
+    });
+};
+
+e.getAllNodes = function(cb){
+    e.conn.query("SELECT * FROM nodes", function(err, rows, fields){
+        cb(rows);
+    });
+};
+e.getAllChildren = function(cb){
+    e.conn.query("SELECT * FROM children", function(err, rows, fields){
+        cb(rows);
+    });
+};
+
+e.getAllPresentationTypes = function (cb){
+    e.conn.query("SELECT * FROM types_presentation", function(err, rows, fields){
+        cb(rows);
+    });
+};
+
+e.getAllValueTypes = function(cb){
+    e.conn.query("SELECT * FROM types_value", function(err, rows, fields){
+        cb(rows);
+    });
+};
+
+e.getAllMappings = function(cb){
+    e.conn.query("SELECT nodeId, childId, (SELECT `key` FROM types_presentation WHERE value=`type`) as type_key, `type` as type_val, openhabItem, lastUpdate FROM children LEFT JOIN mapping ON children.id = mapping.childrenId", function(err, rows, fields){
+        cb(rows);
     });
 };
 

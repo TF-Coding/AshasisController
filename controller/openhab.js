@@ -1,6 +1,7 @@
 var e = {};
 e.config = require('../config');
 e.controller = null;
+e.parseString = require('xml2js').parseString;
 
 //region Privates
 e._push = function (itmUrl, payload) {
@@ -8,7 +9,6 @@ e._push = function (itmUrl, payload) {
     e.request({
         method: 'POST',
         uri: targetUrl,
-        gzip: false,
         body: payload
     }, function (error, response, body) {
         if (error) {
@@ -32,8 +32,9 @@ e._updateItemV1collector = function (sender, sensor, command, ack, type, payload
     return e._push(tItm, body);
 };
 e._updateItemV2 = function (sender, sensor, command, ack, type, payload) {
-    e.database.getOpenhabItemBinding(sender,sensor,function(itm){
-	e._push(itm, payload);
+    e.database.getOpenhabItemBinding(sender, sensor, function (itm) {
+        e.database.updateLastUpdate(sender,sensor);
+        e._push(itm, payload);
     });
 };
 //endregion
@@ -51,6 +52,36 @@ e.send2Sensor = function (sender, sensor, command, ack, type, payload) {
     console.log('[e]-> ' + td.toString());
     //gw.write(td);
 };
+
+e.getItems = function (cb) {
+    var targetUrl = e.config.openhab.url + '/rest/items/';
+    e.request({
+        method: 'GET',
+        uri: targetUrl,
+        timeout: 10000,
+        gzip: false
+    }, function (error, response, body) {
+        if (error) {
+            console.log("REST request error: " + error);
+        } else {
+            e.parseString(body, function (err, result) {
+                if (err) {
+                    console.log("REST request error: " + error);
+                } else {
+                    var data = [];
+                    result.items.item.forEach(function (item) {
+                        data.push({
+                            type: item.type,
+                            name: item.name
+                        });
+                    });
+                    cb(data);
+                }
+            });
+        }
+    }).auth(e.config.openhab.auth.user, e.config.openhab.auth.password, false)
+};
+
 
 e.request = null;
 e.database = null;
