@@ -1,11 +1,15 @@
-module.exports = function (controller) {
+if (typeof define !== 'function') {
+    var define = require('amdefine')(module);
+}
+define(function (require) {
     var express = require('express');
     var router = express.Router();
     var bodyParser = require('body-parser');
     var request = require('request');
-    var config = require("../config");
+    var config = require("config.js");
     var authCache = [];
     var cacheKeep = 5 * 60 * 1000; //ms
+
     router.use(bodyParser.text({inflate: true}));
 
     function checkAuth(user, pass, cb) {
@@ -31,7 +35,7 @@ module.exports = function (controller) {
             method: 'GET',
             uri: config.openhab.url + "/openhab.app"
         }, function (error, response, body) {
-            if(error){
+            if (error) {
                 console.log(error);
                 cb(false);
                 return;
@@ -52,9 +56,9 @@ module.exports = function (controller) {
     router.post("/mappings", function (req, res, next) {
         checkAuth(req.body.user, req.body.pass, function (r) {
             if (r) {
-                controller.openhab.getItems(function(itms){
-                    controller.database.getAllMappings(function(mappings){
-                        res.json({mappings: mappings, items:itms});
+                controller.openhab.getItems(function (itms) {
+                    controller.database.getAllMappings(function (mappings) {
+                        res.json({mappings: mappings, items: itms});
                     });
                 });
             } else {
@@ -108,4 +112,4 @@ module.exports = function (controller) {
     });
 
     return router;
-};
+});
