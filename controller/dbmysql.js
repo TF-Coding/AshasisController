@@ -1,13 +1,12 @@
-
 if (typeof define !== 'function') {
     var define = require('amdefine')(module);
 }
 
-define(function(require) {
+define(function (require) {
     var db = require("mysql");
-    var log = require("logger.js");
+    var log = require("logger");
     var e = {};
-    e.config = require('../config');
+    e.config = require('config');
 
     e.conn = db.createConnection(e.config.database);
 
@@ -92,6 +91,17 @@ define(function(require) {
             }
             e.conn.query("UPDATE nodes SET lastContact=NOW() WHERE nodeId=" + sender);
             cb(row[0].itm);
+        });
+    };
+
+    e.getItemInfos = function (itm, cb) {
+        e.conn.query("SELECT nodeId, childId, `type` FROM mapping, children WHERE mapping.childrenId = children.id AND openhabItem = '" + itm + "'", function (err, row, fields) {
+            if (err || row.length == 0 || row[0].itm == undefined) {
+                log.error("Item [" + itm + "] hat keine Zuordnung");
+                cb(true);
+                return;
+            }
+            cb(false, {sender: row[0].nodeId, sensor: row[0].childId, type: row[0].type});
         });
     };
 

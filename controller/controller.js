@@ -3,104 +3,14 @@ if (typeof define !== 'function') {
 }
 
 define(function (require) {
-
-    function sleep(time, callback) {
-        var stop = new Date().getTime();
-        while(new Date().getTime() < stop + time) {
-            ;
-        }
-        callback();
-    }
-
     var e = {};
-    var config = require("config.js");
-    var database = require("controller/databasewrapper.js");
-    var log = require("logger.js");
-    var openhab = require("controller/openhab.js");
+    var config = require("config");
+    var database = require("database");
+    var log = require("logger");
+    var openhab = require("openhab");
 //    var firmware = require('controller/firmware.js');
-//     var openhab = require('controller/openhab.js');
 
-    e.appendedString = "";
-    e.appendData = function (str) {
-        pos = 0;
-        while (str.charAt(pos) != '\n' && pos < str.length) {
-            e.appendedString = e.appendedString + str.charAt(pos);
-            pos++;
-        }
-        if (str.charAt(pos) == '\n') {
-            e.gotData(e.decode(e.appendedString.trim()));
-            e.appendedString = "";
-        }
-        if (pos < str.length) {
-            e.appendData(str.substr(pos + 1, str.length - pos - 1));
-        }
-    };
-    e.connectSerialPort = function (cb) {
-        var gwType = config.gateway.useType;
-        if (gwType == undefined) {
-            cb("Gateway type undefined :: must be either serial or ethernet");
-            return;
-        }
-
-        var gwConf = config.gateway[gwType];
-        if (gwConf == undefined) {
-            cb("Unknown gateway type :: must be either serial or ethernet");
-            return;
-        }
-
-        var delay = 500;
-
-        if (gwType == 'serial') {
-            var SerialPort = require('serialport').SerialPort;
-            e.gw = new SerialPort(gwConf.port, gwConf);
-            e.gw.on('open', function () {
-                log.info('SerialPort opened :: ' + gwConf.port + "@" + gwConf.baudrate);
-            }).on('data', function (raw) {
-                e.appendData(raw.toString());
-            }).on('end', function () {
-                log.error('SerialPort disconnected :: trying reconnect');
-                //require('sleep').sleep(delay);
-                sleep(2000, function(){
-                    e.gw.open();
-                });
-            }).on('error', function () {
-                log.error('SerialPort error :: trying reconnect');
-                sleep(2000, function(){
-                    e.gw.open();
-                });
-            }).open();
-        } else if (gwType == 'ethernet') {
-            e.gw = require('net').Socket();
-            e.gw.connect(gwConf.port, gwConf.address);
-            e.gw.setEncoding(gwConf.encoding);
-            e.gw.on('connect', function () {
-                log.info('Ethernet gateway connected :: ' + gwConf.address + ":" + gwConf.port);
-                //firmware.preloadFirmware();
-                cb();
-            }).on('data', function (raw) {
-                if (config.debug.logGwRx) log.debug("<- " + raw.trim());
-                raw.trim().split("\n").forEach(function (r) {
-                    e.gotData(e.decode(r));
-                });
-            }).on('end', function () {
-                log.error('EthernetGateway disconnected :: trying reconnect');
-                sleep(2000, function(){
-                    e.gw.connect(gwConf.port, gwConf.address);
-                    e.gw.setEncoding(gwConf.encoding);
-                });
-            }).on('error', function () {
-                log.error('EthernetGateway error :: trying reconnect');
-                //require('sleep').usleep(delay);
-                sleep(2000, function(){
-                    e.gw.connect(gwConf.port, gwConf.address);
-                    e.gw.setEncoding(gwConf.encoding);
-                });
-            });
-        } else {
-            cb('unknown gateway type - supported: serial, ethernet');
-        }
-    };
-    e.encode = function (sender, sensor, command, acknowledge, type, payload) {
+    e._encode = function (sender, sensor, command, acknowledge, type, payload) {
         var msg = sender.toString(10) + ";" + sensor.toString(10) + ";" + command.toString(10) + ";" + acknowledge.toString(10) + ";" + type.toString(10) + ";";
         if (command == 4) {
             for (var i = 0; i < payload.length; i++) {
@@ -114,50 +24,111 @@ define(function (require) {
         msg += '\n';
         return msg.toString();
     };
-    e.decode = function (msg) {
-        var datas = msg.toString().split(";");
-        var sender = +datas[0];
-        var sensor = +datas[1];
-        var command = +datas[2];
-        var ack = +datas[3];
-        var type = +datas[4];
-        var rawpayload = "";
-        if (datas[5]) {
-            rawpayload = datas[5].trim();
+    e._decode = function (msg) {
+        try {
+            var datas = msg.toString().split(";");
+            var sender = +datas[0];
+            var sensor = +datas[1];
+            var command = +datas[2];
+            var ack = +datas[3];
+            var type = +datas[4];
+            var rawpayload = "";
+            if (datas[5]) {
+                rawpayload = datas[5].trim();
+            }
+            var payload;
+            if (command == 4) {
+                payload = [];
+                for (var i = 0; i < rawpayload.length; i += 2)
+                    payload.push(parseInt(rawpayload.substring(i, i + 2), 16));
+            } else {
+                payload = rawpayload;
+            }
+            return {
+                sender: sender,
+                sensor: sensor,
+                command: command,
+                ack: ack,
+                type: type,
+                payload: payload,
+                raw: msg
+            };
+        } catch (e) {
+            return null;
         }
-        var payload;
-        if (command == 4) {
-            payload = [];
-            for (var i = 0; i < rawpayload.length; i += 2)
-                payload.push(parseInt(rawpayload.substring(i, i + 2), 16));
-        } else {
-            payload = rawpayload;
-        }
-        return {
-            sender: sender,
-            sensor: sensor,
-            command: command,
-            ack: ack,
-            type: type,
-            payload: payload,
-            raw: msg
-        };
     };
     e.relay = function (sender, sensor, command, ack, type, payload) {
-        var raw = e.encode(sender, sensor, command, ack, type, payload);
+        var raw = e._encode(sender, sensor, command, ack, type, payload);
         log.debug("[EXT RELAY]-> " + raw);
+        gateway.send(raw);
     };
+
+    var gateway;
+
     e.start = function (callback) {
-        e.connectSerialPort(function (err) {
-                if (err) {
-                    if(callback != undefined) callback(err);
-                    return;
-                }
-                if(callback != undefined) callback();
+        if (callback == undefined) throw new Error("controller.start has got no callback function");
+        var gwType = config.gateway.useType;
+        if (gwType == undefined) {
+            callback("Gateway type undefined :: must be either serial or ethernet");
+            return;
+        }
+
+        if (gwType == 'serial') {
+            gateway = require("serialwrapper");
+        } else if (gwType == 'ethernet') {
+            gateway = require("ethernetwrapper");
+        }
+
+        gateway.onData(function (raw) {
+            var decoded = e._decode(raw);
+            if (decoded != null) {
+                e._dataReceived(decoded);
+            } else {
+                log.error("Decoding failed: " + raw);
             }
-        );
+        });
+
+        gateway.connect(function (error) {
+            callback(error);
+        });
     };
-    e.handleInternal = function (decoded) {
+
+    e._dataReceived = function (decoded) {
+        console.log("<- [" + decoded.sender + ";" + decoded.sensor + "]");
+        switch (decoded.command) {
+            case 0: //C_PRESENTATION
+                e._handlePresentationFrame(decoded);
+                break;
+            case 1://C_SET - value FROM sensor
+                e._handleSetFrame(decoded);
+                break;
+            case 2: //C_REQ - value TO sensor
+                e._handleRequestFrame(decoded);
+                break;
+            case 3: //C_INTERNAL
+                e._handleInternalFrame(decoded);
+                //console.log("INTERNAL" + " :: ",decoded);
+                break;
+            case 4:  //C_STREAM
+                e._handleStreamFrame(decoded);
+                break;
+        }
+    };
+    e._handlePresentationFrame = function (decoded) {
+        if (decoded.sensor == 255) {
+            database.updateNode(decoded.sender, decoded.type, decoded.payload);
+        } else {
+            database.updateChild(decoded.sender, decoded.sensor, decoded.type);
+        }
+    };
+    e._handleSetFrame = function (decoded) {
+        openhab.updateItem(decoded);
+    };
+    e._handleRequestFrame = function (decoded) {
+        log.debug("Got request frame - not supported yet", decoded);
+        //not supported - needed?
+    };
+    e._handleInternalFrame = function (decoded) {
         switch (decoded.type) {
             case 0: //batt
                 database.updateNodeInfoInternal(decoded.sender, "batteryLevel", decoded.payload);
@@ -198,39 +169,9 @@ define(function (require) {
                 return; //uninteresting cases
         }
     };
-    e.handlePresentation = function (decoded) {
-        if (config.openhab.useExperimentalV2Mapping) {
-            if (decoded.sensor == 255) {
-                database.updateNodeInfoPresentation(decoded.sender, decoded.type, decoded.payload);
-            } else {
-                database.updateChildInfo(decoded.sender, decoded.sensor, decoded.type);
-            }
-        }
-    };
-    e.handleSet = function (decoded) {
-        openhab.updateItem(decoded);
-    };
-    e.gotData = function (decoded) {
-        switch (decoded.command) {
-            case 0: //C_PRESENTATION
-                //console.log("PRESENTATION" + " :: ", decoded);
-                e.handlePresentation(decoded);
-                break;
-            case 1://C_SET - value FROM sensor
-                e.handleSet(decoded);
-                break;
-            case 2: //C_REQ - value TO sensor
-                log.debug("REQ" + " :: ", decoded);
-                //not supported
-                break;
-            case 3: //C_INTERNAL
-                e.handleInternal(decoded);
-                //console.log("INTERNAL" + " :: ",decoded);
-                break;
-            case 4:  //C_STREAM
-                break;
-        }
-        //e.appendData(rd.toString(), db, e.gw);
+    e._handleStreamFrame = function (decoded) {
+        log.debug("Got stream frame - not supported yet", decoded);
+        //ToDo: implement Stream handling
     };
     return e;
 });

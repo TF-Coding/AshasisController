@@ -4,12 +4,10 @@ if [ ! -d /opt/openhab ];then
 	exit 1
 fi
 
-cp ashasiscontroller /etc/init.d/
+cd $(dirname $0)
+cp /ashasiscontroller /etc/init.d/
 chmod +x /etc/init.d/ashasiscontroller
 /usr/sbin/update-rc.d ashasiscontroller defaults
-
-npm install
-node prepare.js
 
 apt-get install -y screen sudo
 useradd -d /opt/openhab/ -M -s /bin/bash openhab

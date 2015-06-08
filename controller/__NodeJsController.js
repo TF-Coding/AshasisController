@@ -127,7 +127,7 @@ const P_CUSTOM						= 6;
 e.fs = require('fs');
 e.path = require('path');
 e.requestify = require('requestify');
-e.appendedString="";
+e._buffer="";
 
 e.crcUpdate = function(old, value) {
 	var c = old ^ value;
@@ -575,12 +575,12 @@ e.sendRebootMessage=function(destination, gw) {
 e.appendData = function(str, db, gw) {
     pos=0;
     while (str.charAt(pos) != '\n' && pos < str.length) {
-        e.appendedString=e.appendedString+str.charAt(pos);
+        e._buffer=e._buffer+str.charAt(pos);
         pos++;
     }
     if (str.charAt(pos) == '\n') {
-        e.rfReceived(e.appendedString.trim(), db, gw);
-        e.appendedString="";
+        e.rfReceived(e._buffer.trim(), db, gw);
+        e._buffer="";
     }
     if (pos < str.length) {
         e.appendData(str.substr(pos+1,str.length-pos-1), db, gw);

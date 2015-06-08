@@ -5,12 +5,13 @@ if (typeof define !== 'function') {
 define(function (require) {
 
     var e = {};
-    var config = require('config.js');
-    var controller = require('controller/controller.js');
+    var config = require('config');
+    var controller = require('controller');
     var parseString = require('xml2js').parseString;
     var request = require("request");
-    var database = require("controller/databasewrapper.js");
-    var log = require("logger.js");
+    var database = require("database");
+    var log = require("logger");
+    var crypto = require("crypto");
 
     e._push = function (itmUrl, payload) {
         var targetUrl = config.openhab.url + '/rest/items/' + itmUrl;
@@ -36,16 +37,15 @@ define(function (require) {
     e.updateItem = function (decoded) {
         database.getOpenhabItemBinding(decoded.sender, decoded.sensor, function (itm) {
             database.updateLastUpdate(decoded.sender, decoded.sensor);
-            log.debug(itm);
             e._push(itm, decoded.payload);
         });
     };
     /*
-    e.send2Sensor = function (sender, sensor, command, ack, type, payload) {
-        var td = e.encode(destination, sensor, command, ack, type, payload);
-        console.log('[e]-> ' + td.toString());
-        //gw.write(td);
-    };*/
+     e.send2Sensor = function (sender, sensor, command, ack, type, payload) {
+     var td = e.encode(destination, sensor, command, ack, type, payload);
+     console.log('[e]-> ' + td.toString());
+     //gw.write(td);
+     };*/
     e.getItems = function (cb) {
         var targetUrl = config.openhab.url + '/rest/items/';
         request({
@@ -79,6 +79,14 @@ define(function (require) {
             }
         });
     };
+
+
+    e.checkAuth = function (user, pass) {
+        if (!config.webif.auth.enabled) return true;
+        return (config.webif.auth.user == user && config.webif.auth.pass == pass);
+
+    };
+
 
     return e;
 });
