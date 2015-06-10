@@ -1,5 +1,4 @@
 module.exports = function (requirejs) {
-    console.log(__dirname);
     requirejs.config({
         baseUrl: __dirname,
         nodeRequire: require,
@@ -11,7 +10,8 @@ module.exports = function (requirejs) {
             openhab: 'openhab',
             routes: '../routes/api',
             ethernetwrapper: 'ethernetwrapper',
-            serialwrapper: 'serialwrapper'
+            serialwrapper: 'serialwrapper',
+            fakewrapper: 'fakewrapper'
         }
     });
 };

@@ -11,6 +11,7 @@ define(function (require) {
     var logger = require("logger");
     var controller = require("controller");
     var openhab = require("openhab");
+    var database = require("database");
 
     app.use(bodyParser.text());
     app.use(bodyParser.json());
@@ -72,11 +73,43 @@ define(function (require) {
         }
     });
 
+
+    //push api
+
     app.post("/controller/push", function (req, res, next) {
-        if (!openhab.checkAuth(req.params.username, req.params.password)) {
+        var data = {};
+        if (typeof req.body == "object") {
+            data = req.body;
+        } else if (typeof req.body == "string") {
+            data = JSON.parse(req.body);
+        } else {
+            res.status(400);
+            res.json({
+                message: "Invalid parameter",
+                error: true
+            });
+            return;
+        }
+
+        if (!openhab.checkAuth(data.username, data.password)) {
             res.sendStatus(403);
         } else {
-            _relayController(req.params.item, req.body, res);
+            if (data.item == undefined || data.value == undefined) {
+                res.status(400);
+                res.json({
+                    message: "Invalid parameter",
+                    error: true
+                });
+            } else {
+                database.getItemInfos(data.item, function (err, itmInfo) {
+                    if (!err) {
+                        controller.relay(itmInfo.sender, itmInfo.sensor, 1, 0, itmInfo.type, data.value);
+                        res.sendStatus(200);
+                    } else {
+                        res.sendStatus(400);
+                    }
+                });
+            }
         }
     });
 
@@ -89,19 +122,6 @@ define(function (require) {
             res.sendStatus(200);
         }
     };
-
-    var _relayController = function (itm, val, res) {
-        //TODO: irgendwo hier wird ein 500er geworfen.
-        database.getItemInfos(itm, function(err,itmInfo){
-            if(!err){
-                controller.relay(itmInfo.sender, itmInfo.sensor, 1, 0, itmInfo.type, val);
-                res.sendStatus(200);
-            }else{
-                throw new Error("Relay failed");
-            }
-        });
-    };
-
 
     return app;
 

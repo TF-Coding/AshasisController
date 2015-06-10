@@ -3,18 +3,18 @@ if (typeof define !== 'function') {
 }
 
 define(function (require) {
-    e._db = require("mysql");
     var log = require("logger");
     var e = {};
+    e._db = require("mysql");
     e.config = require('config');
-    e._conn = db.createConnection(e.config.database);
+    e._conn = e._db.createConnection(e.config.database);
 
     e._handleError = function(e){
         log.error("MYSQL: ERROR ::" + e);
     };
 
     e._connect = function (cb) {
-        e._conn.on('error',e._handleError);
+        //e._conn.on('error',e._handleError);
         e._conn.connect(cb);
     };
     e.updateLastUpdate = function (nodeId, childId) {
@@ -100,7 +100,7 @@ define(function (require) {
 
     e.getItemInfos = function (itm, cb) {
         e._conn.query("SELECT nodeId, childId, `type` FROM mapping, children WHERE mapping.childrenId = children.id AND openhabItem = '" + itm + "'", function (err, row, fields) {
-            if (err || row.length == 0 || row[0].itm == undefined) {
+            if (err || row.length == 0) {
                 log.error("Item [" + itm + "] hat keine Zuordnung");
                 cb(true);
                 return;

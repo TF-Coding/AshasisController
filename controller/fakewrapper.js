@@ -1,3 +1,5 @@
+//this one is just a fake provider based on the functional ones
+
 if (typeof define !== 'function') {
     var define = require('amdefine')(module);
 }
@@ -10,11 +12,7 @@ define(function (require) {
      .connect( callback ) => callback( error )
      .onData( callback ) => callback( rawLine )
      */
-    var SerialPort = require('serialport').SerialPort;
     var config = require("config");
-    e.serialport = null;
-
-    e._buffer = "";
     e._appendBuffer = function (str) {
         pos = 0;
         while (str.charAt(pos) != '\n' && pos < str.length) {
@@ -31,29 +29,13 @@ define(function (require) {
     };
     e._onDataCallback = function () { /* noop */ };
     e.send = function(data){
-        e.serialport.write(data);
+        log.info("Data to gateway:" + data);
     };
     e.onData = function (dataCallback) {
         e._onDataCallback = dataCallback;
     };
     e.connect = function (callback) {
-        e.serialport = new SerialPort(config.gateway.serial.port, config.gateway.serial);
-        e.serialport.on('open', function () {
-            log.info('SerialPort opened :: ' + config.gateway.serial.port + "@" + config.gateway.serial.baudrate);
-            callback();
-        });
-        e.serialport.on('data', function (raw) {
-            e._appendBuffer(raw.toString());
-        });
-        e.serialport.on('end', function () {
-            log.error('SerialPort disconnected - reconnect');
-            e.connect(callback);
-        });
-        e.serialport.on('error', function () {
-            log.error('SerialPort error - reconnect');
-            e.connect(callback);
-        });
-        e.serialport.open();
+        callback();
     };
 
     return e;

@@ -38,6 +38,7 @@ requirejs(['logger', 'http', 'config', 'routes', 'controller', 'express', 'body-
     app.use(function (req, res, next) {
         var err = new Error('Not Found');
         err.status = 404;
+        log.error("Invalid api request: [" + req.method + "] " + req.url);
         next(err);
     });
     app.use(function (err, req, res, next) {

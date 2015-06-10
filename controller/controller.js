@@ -77,6 +77,9 @@ define(function (require) {
             gateway = require("serialwrapper");
         } else if (gwType == 'ethernet') {
             gateway = require("ethernetwrapper");
+        }else if (gwType == 'fake') {
+            gateway = require("fakewrapper");
+            log.error("ATTENTION! You are using the fake provider.");
         }
 
         gateway.onData(function (raw) {
