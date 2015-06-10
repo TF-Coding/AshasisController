@@ -3,23 +3,27 @@ if (typeof define !== 'function') {
 }
 
 define(function (require) {
-    var db = require("mysql");
+    e._db = require("mysql");
     var log = require("logger");
     var e = {};
     e.config = require('config');
+    e._conn = db.createConnection(e.config.database);
 
-    e.conn = db.createConnection(e.config.database);
+    e._handleError = function(e){
+        log.error("MYSQL: ERROR ::" + e);
+    };
 
-    e.connect = function (cb) {
-        e.conn.connect(cb);
+    e._connect = function (cb) {
+        e._conn.on('error',e._handleError);
+        e._conn.connect(cb);
     };
     e.updateLastUpdate = function (nodeId, childId) {
-        e.conn.query("UPDATE mapping SET lastupdate = NOW() WHERE id=(SELECT id FROM children WHERE nodeId = " + nodeId + " AND childId = " + childId + ")");
-        e.conn.query("UPDATE nodes SET lastcontact = NOW() WHERE nodeId=" + nodeId);
+        e._conn.query("UPDATE mapping SET lastupdate = NOW() WHERE id=(SELECT id FROM children WHERE nodeId = " + nodeId + " AND childId = " + childId + ")");
+        e._conn.query("UPDATE nodes SET lastcontact = NOW() WHERE nodeId=" + nodeId);
     };
     e.updateChildInfo = function (nodeId, childId, type) {
         //check if existing
-        e.conn.query("SELECT COUNT(*) as `exists` FROM children WHERE nodeId = " + nodeId + " AND childId = " + childId, function (err, rows, fields) {
+        e._conn.query("SELECT COUNT(*) as `exists` FROM children WHERE nodeId = " + nodeId + " AND childId = " + childId, function (err, rows, fields) {
             if (err) {
                 log.error("DB-ERROR: " + err);
             } else {
@@ -29,7 +33,7 @@ define(function (require) {
                 } else {
                     qry = "UPDATE children SET `type`=" + type + " WHERE nodeId = " + nodeId + " AND childId = " + childId;
                 }
-                e.conn.query(qry);
+                e._conn.query(qry);
 
             }
         });
@@ -37,18 +41,18 @@ define(function (require) {
 
     e.updateNodeInfoInternal = function (nodeId, updateCol, value) {
         //check if existing
-        e.conn.query("SELECT COUNT(*) as `exists` FROM nodes WHERE nodeId = " + nodeId, function (err, rows, fields) {
+        e._conn.query("SELECT COUNT(*) as `exists` FROM nodes WHERE nodeId = " + nodeId, function (err, rows, fields) {
             if (err) {
                 log.error("DB-ERROR: " + err);
             } else {
                 var qry = "UPDATE nodes SET `" + updateCol + "`='" + value + "' WHERE nodeId=" + nodeId;
                 if (rows[0].exists == 0) {
                     //create entry
-                    e.conn.query("INSERT INTO nodes (nodeId) VALUES (" + nodeId + ")", function () {
-                        e.conn.query(qry);
+                    e._conn.query("INSERT INTO nodes (nodeId) VALUES (" + nodeId + ")", function () {
+                        e._conn.query(qry);
                     });
                 } else {
-                    e.conn.query(qry);
+                    e._conn.query(qry);
                 }
             }
         });
@@ -56,7 +60,7 @@ define(function (require) {
 
     e.updateNodeInfoPresentation = function (nodeId, type, value) {
         //check if existing
-        e.conn.query("SELECT COUNT(*) as `exists` FROM nodes WHERE nodeId = " + nodeId, function (err, rows, fields) {
+        e._conn.query("SELECT COUNT(*) as `exists` FROM nodes WHERE nodeId = " + nodeId, function (err, rows, fields) {
             if (err) {
                 log.error("DB-ERROR: " + err);
             } else {
@@ -73,29 +77,29 @@ define(function (require) {
 
                 if (rows[0].exists == 0) {
                     //create entry
-                    e.conn.query("INSERT INTO nodes (nodeId) VALUES (" + nodeId + ")", function () {
-                        e.conn.query(qry);
+                    e._conn.query("INSERT INTO nodes (nodeId) VALUES (" + nodeId + ")", function () {
+                        e._conn.query(qry);
                     });
                 } else {
-                    e.conn.query(qry);
+                    e._conn.query(qry);
                 }
             }
         });
     };
 
     e.getOpenhabItemBinding = function (sender, sensor, cb) {
-        e.conn.query("SELECT openhabItem as itm FROM children, mapping WHERE children.id = mapping.childrenId AND children.nodeId = " + sender + " AND children.childId = " + sensor, function (err, row, fields) {
+        e._conn.query("SELECT openhabItem as itm FROM children, mapping WHERE children.id = mapping.childrenId AND children.nodeId = " + sender + " AND children.childId = " + sensor, function (err, row, fields) {
             if (err || row.length == 0 || row[0].itm == undefined) {
                 log.error("Einheit " + sender + " Sensor " + sensor + " hat keine openhab-Zuordnung");
                 return;
             }
-            e.conn.query("UPDATE nodes SET lastContact=NOW() WHERE nodeId=" + sender);
+            e._conn.query("UPDATE nodes SET lastContact=NOW() WHERE nodeId=" + sender);
             cb(row[0].itm);
         });
     };
 
     e.getItemInfos = function (itm, cb) {
-        e.conn.query("SELECT nodeId, childId, `type` FROM mapping, children WHERE mapping.childrenId = children.id AND openhabItem = '" + itm + "'", function (err, row, fields) {
+        e._conn.query("SELECT nodeId, childId, `type` FROM mapping, children WHERE mapping.childrenId = children.id AND openhabItem = '" + itm + "'", function (err, row, fields) {
             if (err || row.length == 0 || row[0].itm == undefined) {
                 log.error("Item [" + itm + "] hat keine Zuordnung");
                 cb(true);
@@ -106,30 +110,30 @@ define(function (require) {
     };
 
     e.getAllNodes = function (cb) {
-        e.conn.query("SELECT * FROM nodes", function (err, rows, fields) {
+        e._conn.query("SELECT * FROM nodes", function (err, rows, fields) {
             cb(rows);
         });
     };
     e.getAllChildren = function (cb) {
-        e.conn.query("SELECT * FROM children", function (err, rows, fields) {
+        e._conn.query("SELECT * FROM children", function (err, rows, fields) {
             cb(rows);
         });
     };
 
     e.getAllPresentationTypes = function (cb) {
-        e.conn.query("SELECT * FROM types_presentation", function (err, rows, fields) {
+        e._conn.query("SELECT * FROM types_presentation", function (err, rows, fields) {
             cb(rows);
         });
     };
 
     e.getAllValueTypes = function (cb) {
-        e.conn.query("SELECT * FROM types_value", function (err, rows, fields) {
+        e._conn.query("SELECT * FROM types_value", function (err, rows, fields) {
             cb(rows);
         });
     };
 
     e.getAllMappings = function (cb) {
-        e.conn.query("SELECT nodeId, childId, (SELECT `key` FROM types_presentation WHERE value=`type`) as type_key, `type` as type_val, openhabItem, lastUpdate FROM children LEFT JOIN mapping ON children.id = mapping.childrenId", function (err, rows, fields) {
+        e._conn.query("SELECT nodeId, childId, (SELECT `key` FROM types_presentation WHERE value=`type`) as type_key, `type` as type_val, openhabItem, lastUpdate FROM children LEFT JOIN mapping ON children.id = mapping.childrenId", function (err, rows, fields) {
             cb(rows);
         });
     };

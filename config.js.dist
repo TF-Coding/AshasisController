@@ -1,39 +1,50 @@
-module.exports = {
-    database: {
-        host: 'localhost',
-        user: 'root',
-        password: '',
-        database: 'mysensors'
-    },
-    openhab: {
-        useExperimentalV2Mapping: true,
-        pushValuesOnly: true,
-        useCollectorItem: false,
-        collectorItemName: 'ArduinoRestInput',
-        url: 'http://localhost:8080',
-        auth: {
-            user: 'test',
-            password: 'test1'
-        }
-    },
-    gateway: {
-        useType: 'ethernet',
-        serial: {
-            port: '/dev/ttUSB0',
-            baudrate: 115200
-        },
-        ethernet: {
-            port: '9999',
-            address: '127.0.0.1',
-            encoding: 'ascii'
-        }
-    },
-    debug: {
-        logGwRx: true,
-        logGwTx: true,
-        logOpenhabPush404: true
-    },
-    webif: { },
-    controllerVersion: "0.9.0"
+if (typeof define !== 'function') {
+    var define = require('amdefine')(module);
+}
 
-};
+define(function (require) {
+    return {
+        database: {
+            host: 'localhost',
+            user: 'root',
+            password: '',
+            database: 'mysensors'
+        },
+        openhab: {
+            itmPrefix: '',
+            url: 'http://10.10.8.31',
+            auth: {
+                user: 'test',
+                password: 'test1'
+            }
+        },
+        gateway: {
+            useType: 'ethernet',
+            serial: {
+                port: '/dev/ttyAshasis',
+                baudrate: 115200
+            },
+            ethernet: {
+                port: '9001',
+                address: '10.10.8.31',
+                encoding: 'ascii'
+            }
+        },
+        debug: {
+            logGwRx: true,
+            logGwTx: true,
+            logOpenhabPush404: true
+        },
+        webif: {
+            root: '/_ashaapi',
+            port: 9000,
+            auth: {
+                enable: true,
+                user: 'test',
+                pass: 'test1'
+            }
+        },
+        controllerVersion: "0.9.0"
+
+    }
+});
