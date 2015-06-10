@@ -57,10 +57,13 @@ define(function (require) {
             return null;
         }
     };
-    e.relay = function (sender, sensor, command, ack, type, payload) {
-        var raw = e._encode(sender, sensor, command, ack, type, payload);
+
+    e.relayRaw = function(raw){
         log.debug("[EXT RELAY]-> " + raw);
         gateway.send(raw);
+    };
+    e.relay = function (sender, sensor, command, ack, type, payload) {
+        e.relayRaw(e._encode(sender, sensor, command, ack, type, payload));
     };
 
     var gateway;
