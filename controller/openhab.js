@@ -81,12 +81,5 @@ define(function (require) {
     };
 
 
-    e.checkAuth = function (user, pass) {
-        if (!config.webif.auth.enabled) return true;
-        return (config.webif.auth.user == user && config.webif.auth.pass == pass);
-
-    };
-
-
     return e;
 });

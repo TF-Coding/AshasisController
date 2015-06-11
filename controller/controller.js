@@ -69,10 +69,15 @@ define(function (require) {
     var gateway;
 
     e.start = function (callback) {
-        if (callback == undefined) throw new Error("controller.start has got no callback function");
+        if (callback == undefined) {
+            log.error("controller.start has got no callback function");
+            callback(true);
+            return;
+        }
         var gwType = config.gateway.useType;
         if (gwType == undefined) {
-            callback("Gateway type undefined :: must be either serial or ethernet");
+            log.error("Gateway type undefined :: must be either serial or ethernet");
+            callback(true);
             return;
         }
 
@@ -94,9 +99,24 @@ define(function (require) {
             }
         });
 
-        gateway.connect(function (error) {
-            callback(error);
+        database.connect(function(error){
+            if(error){
+                log.error("Database connection error :: " + error);
+                callback(true);
+            }else{
+                log.info("Database connected");
+                gateway.connect(function (error2) {
+                    if(error2){
+                        log.error("Gateway connection error :: " + error);
+                        callback(true);
+                    }else{
+                        log.info("Gateway connected");
+                        callback();
+                    }
+                });
+            }
         });
+
     };
 
     e._dataReceived = function (decoded) {

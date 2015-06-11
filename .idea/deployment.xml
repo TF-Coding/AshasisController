@@ -1,19 +1,4 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="Always" serverName="rpro">
-    <serverData>
-      <paths name="rpro">
-        <serverdata>
-          <mappings>
-            <mapping deploy="/opt/controller" local="$PROJECT_DIR$" web="/" />
-          </mappings>
-          <excludedPaths>
-            <excludedPath local="true" path="$PROJECT_DIR$/node_modules" />
-            <excludedPath path="/opt/controller/node_modules" />
-          </excludedPaths>
-        </serverdata>
-      </paths>
-    </serverData>
-    <option name="myAutoUpload" value="ALWAYS" />
-  </component>
+  <component name="PublishConfigData" serverName="rpro" />
 </project>

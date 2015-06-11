@@ -13,8 +13,9 @@ define(function (require) {
         log.error("MYSQL: ERROR ::" + e);
     };
 
-    e._connect = function (cb) {
+    e.connect = function (cb) {
         //e._conn.on('error',e._handleError);
+        log.info("Connecting to database");
         e._conn.connect(cb);
     };
     e.updateLastUpdate = function (nodeId, childId) {
@@ -106,6 +107,16 @@ define(function (require) {
                 return;
             }
             cb(false, {sender: row[0].nodeId, sensor: row[0].childId, type: row[0].type});
+        });
+    };
+
+    e.getTypeForChild = function(sender,sensor, cb){
+        e._conn.query("SELECT `type` FROM children WHERE nodeId = '"+sender+"' AND childId = '" + sensor + "'", function (err, row, fields) {
+            if (err || row.length == 0) {
+                cb(err);
+            } else {
+                cb(err, row[0].type);
+            }
         });
     };
 

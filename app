@@ -74,9 +74,10 @@ requirejs(['logger', 'http', 'config', 'routes', 'controller', 'express', 'body-
         log.info('Webserver started on: ' + (typeof addr === 'string' ? 'pipe ' + addr : addr.address + ":" + addr.port));
         controller.start(function (error) {
             if (!error) {
-                //no error
+                log.info("Everything started without errors.");
             } else {
-                //got error
+                log.error("We got errors. Aborting start.");
+                process.exit(1);
             }
         });
     });

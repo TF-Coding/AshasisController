@@ -13,6 +13,16 @@ define(function (require) {
     var openhab = require("openhab");
     var database = require("database");
 
+
+    var checkAuth = function (req, user, pass) {
+        //if localhost it's always valid
+        if (req.connection.remoteAddress.indexOf("127.0.0.1") > -1) return true;
+        if (!config.webif.auth.enabled) return true;
+        return (config.webif.auth.user == user && config.webif.auth.pass == pass);
+
+    };
+
+
     app.use(bodyParser.text());
     app.use(bodyParser.json());
     app.use(bodyParser.urlencoded({     // to support URL-encoded bodies
@@ -27,7 +37,7 @@ define(function (require) {
     });
 
     app.post("/mappings", function (req, res, next) {
-        if (!openhab.checkAuth(req.params.username, req.params.password)) {
+        if (!checkAuth(req, req.params.username, req.params.password)) {
             res.sendStatus(403);
         } else {
             controller.openhab.getItems(function (itms) {
@@ -38,7 +48,7 @@ define(function (require) {
         }
     });
     app.post("/auth", function (req, res, next) {
-        if (!openhab.checkAuth(req.params.username, req.params.password)) res.json({result: false});
+        if (!checkAuth(req, req.params.username, req.params.password)) res.json({result: false});
         else res.json({result: true});
     });
 
@@ -58,7 +68,7 @@ define(function (require) {
             });
             return;
         }
-        if (!openhab.checkAuth(data.username, data.password)) {
+        if (!checkAuth(req, data.username, data.password)) {
             res.sendStatus(403);
         } else {
             if (data.item == undefined || data.value == undefined) {
@@ -75,7 +85,78 @@ define(function (require) {
 
 
     //push api
+    app.post("/controller/push/raw", function (req, res, next) {
+        var data = {};
+        if (typeof req.body == "object") {
+            data = req.body;
+        } else if (typeof req.body == "string") {
+            data = JSON.parse(req.body);
+        } else {
+            res.status(400);
+            res.json({
+                message: "Invalid parameter",
+                error: true
+            });
+            return;
+        }
+        if (data.raw == undefined) {
+            res.status(400);
+            res.json({
+                message: "Invalid parameter",
+                error: true
+            });
+            return;
+        }
 
+        if (!checkAuth(req, data.username, data.password)) {
+            res.sendStatus(403);
+        } else {
+            controller.relayRaw(data.raw);
+            res.sendStatus(200);
+        }
+    });
+    app.post("/controller/push/node", function (req, res, next) {
+        var data = {};
+        if (typeof req.body == "object") {
+            data = req.body;
+        } else if (typeof req.body == "string") {
+            data = JSON.parse(req.body);
+        } else {
+            res.status(400);
+            res.json({
+                message: "Invalid parameter",
+                error: true
+            });
+            return;
+        }
+        if (
+            data.child == undefined || isNaN(data.child) ||
+            data.node == undefined || isNaN(data.node) ||
+            data.value == undefined
+        ) {
+            res.status(400);
+            res.json({
+                message: "Invalid parameter",
+                error: true
+            });
+            return;
+        }
+        if (!checkAuth(req, req.body.username, req.body.password)) {
+            res.sendStatus(403);
+        } else {
+            //try resolving type according to database
+            database.getTypeForChild(data.node,data.child, function(err, type){
+                if(err){
+                    controller.relay(data.node,data.child,1,0,24, data.value); //TODO: if 24 is ok for this usage
+                    res.sendStatus(200);
+                }else{
+                    controller.relay(data.node,data.child,1,0,type, data.value);
+                    res.sendStatus(200);
+                }
+
+            });
+        }
+    });
     app.post("/controller/push", function (req, res, next) {
         var data = {};
         if (typeof req.body == "object") {
@@ -91,7 +172,7 @@ define(function (require) {
             return;
         }
 
-        if (!openhab.checkAuth(data.username, data.password)) {
+        if (!checkAuth(req, data.username, data.password)) {
             res.sendStatus(403);
         } else {
             if (data.item == undefined || data.value == undefined) {
