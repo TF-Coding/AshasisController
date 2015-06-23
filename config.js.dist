@@ -4,6 +4,13 @@ if (typeof define !== 'function') {
 
 define(function (require) {
     return {
+        controller: {
+                defaultInclusionTimeout: 60,
+                version: "0.9.1",
+                hooks: {
+                    inclusionModeIndicator: true
+                }
+        },
         database: {
             host: 'localhost',
             user: 'sensors',
@@ -46,8 +53,6 @@ define(function (require) {
                 user: '',
                 pass: ''
             }
-        },
-        controllerVersion: "0.9.0"
-
+        }
     }
 });
