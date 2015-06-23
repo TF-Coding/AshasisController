@@ -8,6 +8,7 @@ module.exports = function (requirejs) {
             controller: 'controller',
             database: 'dbmysql',
             openhab: 'openhab',
+            hooks: 'hooks',
             routes: '../routes/api',
             ethernetwrapper: 'ethernetwrapper',
             serialwrapper: 'serialwrapper',

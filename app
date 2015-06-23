@@ -14,24 +14,36 @@ function normalizePort(val) {
 var requirejs = require("requirejs");
 require("./controller/shim.js")(requirejs);
 
-requirejs(['logger', 'http', 'config', 'routes', 'controller', 'express', 'body-parser'], function (log, http, config, routes, controller, express, bodyParser) {
+requirejs(['logger', 'http', 'config', 'routes', 'controller', 'express', 'body-parser', 'hooks'], function (log, http, config, routes, controller, express, bodyParser, hooks) {
     var app = express();
     var server = http.createServer(app);
 
-    log.settings.info = true;
-    log.settings.error = true;
-    log.settings.debug = true;
-
+    log.settings.info = true; //DEBUG
+    log.settings.error = true; //DEBUG
+    log.settings.debug = true; //DEBUG
 
     log.info("Based on MySensors - NodeJsController");
     log.info("https://github.com/mysensors/Arduino/tree/0036c5f52ad0632bd21c5d106d0f40b9fa7e0fcf/NodeJsController");
     log.info("Using base url: " + config.webif.root);
 
-
     app.set('port', normalizePort(config.webif.port));
     //app.use(logger('dev'));
     app.use(bodyParser.json());
     app.use(bodyParser.urlencoded({extended: false}));
+
+    //attach hooks
+    var sys = require('sys');
+    var exec = require('child_process').exec;
+    if (config.controller.hooks.inclusionModeIndicator) {
+        hooks.register("controller.inclusionmode.enabled", function () {
+            exec("echo \"timer\" > /leds/blue/trigger");
+        });
+        hooks.register("controller.inclusionmode.disabled", function () {
+            exec("echo \"none\" > /leds/blue/trigger");
+        });
+    }
+    //exec("ls -la");
+
 
     app.use(config.webif.root, routes);
 
@@ -48,6 +60,7 @@ requirejs(['logger', 'http', 'config', 'routes', 'controller', 'express', 'body-
             error: (app.get('env') === 'development' ? err : {} )
         });
     });
+
 
     server.on('error', function (error) {
         if (error.syscall !== 'listen') {

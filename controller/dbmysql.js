@@ -88,6 +88,21 @@ define(function (require) {
         });
     };
 
+    e.assignNewId = function(cb){
+        e._conn.query("SELECT MAX(nodeId)+1 as newId FROM nodes",function(err,row,fields){
+            if (err || row.length == 0 || row[0].newId == undefined) {
+                log.error("Konnte keine ID ermitteln.");
+                return;
+            }
+            if(row[0].newId < 1 || row[0].newId > 254){
+                log.error("Es sind keine IDs mehr verfügbar.");
+                return;
+            }
+            e._conn.query("INSERT INTO nodes (nodeId) VALUES ("+row[0].newId+")");
+            cb(row[0].newId);
+        });
+
+    };
     e.getOpenhabItemBinding = function (sender, sensor, cb) {
         e._conn.query("SELECT openhabItem as itm FROM children, mapping WHERE children.id = mapping.childrenId AND children.nodeId = " + sender + " AND children.childId = " + sensor, function (err, row, fields) {
             if (err || row.length == 0 || row[0].itm == undefined) {
